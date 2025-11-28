@@ -1,0 +1,7 @@
+{
+  "name": "StockHaus",
+  "description": "Inventory management system for The Art Warehouse.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
