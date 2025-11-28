@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+const API_BASE_URL = (() => {
+  const env = (import.meta.env.VITE_API_BASE_URL as string | undefined);
+  if (env && env !== '') return env.replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const runtime = (window as any).__STOCKHAUS_API_BASE__ as string | undefined;
+    if (runtime && runtime !== '') return runtime.replace(/\/$/, '');
+    try { return `${window.location.origin.replace(/\/$/, '')}/api`; } catch { return 'http://localhost:4000/api'; }
+  }
+  return 'http://localhost:4000/api';
+})();
 
 type AuthContextValue = {
   user: { username: string } | null;
