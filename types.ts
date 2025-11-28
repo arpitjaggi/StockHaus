@@ -7,7 +7,7 @@ export interface Painting {
   unit: 'cm' | 'in';
   quantity: number;
   rate?: number; // Made optional
-  image: string; // Base64 string
+  imageUrl: string;
   createdAt: number;
   updatedAt: number;
 }

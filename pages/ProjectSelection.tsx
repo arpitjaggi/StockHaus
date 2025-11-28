@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FolderOpen, Clock, ChevronRight, Trash2, Package, Circle } from 'lucide-react';
+import { Plus, FolderOpen, Clock, ChevronRight, Trash2, Package, Circle, AlertTriangle } from 'lucide-react';
 import { db } from '../lib/db';
 import { Project } from '../types';
 
@@ -8,6 +8,7 @@ export const ProjectSelection: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
 
@@ -16,9 +17,16 @@ export const ProjectSelection: React.FC = () => {
   }, []);
 
   const loadProjects = async () => {
-    const data = await db.getProjects();
-    setProjects(data);
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await db.getProjects();
+      setProjects(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load projects.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -26,23 +34,33 @@ export const ProjectSelection: React.FC = () => {
     if (!newProjectName.trim()) return;
 
     setIsLoading(true);
-    await db.createProject(newProjectName);
-    // Determine where to go based on device
-    const isMobile = window.innerWidth < 768;
-    navigate(isMobile ? '/upload' : '/dashboard');
+    try {
+      await db.createProject(newProjectName);
+      setShowNewProjectModal(false);
+      setNewProjectName('');
+      const isMobile = window.innerWidth < 768;
+      navigate(isMobile ? '/app/upload' : '/app/dashboard');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Unable to create project.');
+      setIsLoading(false);
+    }
   };
 
   const handleSelectProject = (id: string) => {
     db.setActiveProjectId(id);
     const isMobile = window.innerWidth < 768;
-    navigate(isMobile ? '/upload' : '/dashboard');
+    navigate(isMobile ? '/app/upload' : '/app/dashboard');
   };
 
   const handleDeleteProject = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm("Are you sure? This will delete the project and all inventory data inside it.")) {
-      await db.deleteProject(id);
-      loadProjects();
+      try {
+        await db.deleteProject(id);
+        loadProjects();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to delete project.');
+      }
     }
   };
 
@@ -74,6 +92,12 @@ export const ProjectSelection: React.FC = () => {
 
         {/* Project List */}
         <div className="space-y-3">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+              <AlertTriangle size={16} />
+              {error}
+            </div>
+          )}
           {isLoading ? (
             <div className="text-center py-12 text-slate-400">Loading sessions...</div>
           ) : projects.length === 0 ? (

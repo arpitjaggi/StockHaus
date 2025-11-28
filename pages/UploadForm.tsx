@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Check, Loader2, ArrowRight } from 'lucide-react';
+import { Camera, X, Check, Loader2, ArrowRight } from 'lucide-react';
 import { db } from '../lib/db';
 import { PaintingFormData } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -92,7 +92,7 @@ export const UploadForm: React.FC = () => {
         unit: formData.unit,
         quantity: parseInt(formData.quantity),
         rate: formData.rate ? parseFloat(formData.rate) : undefined,
-        image: formData.image,
+        imageBase64: formData.image,
       });
 
       setShowSuccess(true);
@@ -114,7 +114,7 @@ export const UploadForm: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">Add New Inventory</h1>
         <button 
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/app/dashboard')}
           className="text-sm text-brand-600 font-medium hover:text-brand-700"
         >
           View Dashboard

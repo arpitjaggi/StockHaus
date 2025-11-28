@@ -1,217 +1,130 @@
 import { Painting, Project } from '../types';
 
-// ==========================================
-// DATABASE ABSTRACTION LAYER
-// ==========================================
-
-const PROJECTS_KEY = 'stockhaus_projects';
 const ACTIVE_PROJECT_ID_KEY = 'stockhaus_active_project_id';
-const DATA_PREFIX = 'stockhaus_data_';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 
-// Simulate network delay for realistic UI feedback
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+type ApiOptions = RequestInit & { requireAuth?: boolean };
 
 class DatabaseService {
-  
-  // --- SESSION / PROJECT MANAGEMENT ---
-
-  /**
-   * Get all available projects
-   */
-  async getProjects(): Promise<Project[]> {
-    await delay(200);
-    try {
-      const data = localStorage.getItem(PROJECTS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
+  private getToken() {
+    return localStorage.getItem('stockhaus_token');
   }
 
-  /**
-   * Create a new project and set it as active
-   */
-  async createProject(name: string, description?: string): Promise<Project> {
-    await delay(300);
-    const projects = await this.getProjects();
-    
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      createdAt: Date.now(),
-      lastAccessed: Date.now(),
-      itemCount: 0
+  private getAuthHeaders() {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
+  private async request<T>(path: string, options: ApiOptions = {}): Promise<T> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(options.requireAuth !== false ? this.getAuthHeaders() : {}),
+      ...(options.headers || {}),
     };
 
-    projects.unshift(newProject); // Add to top
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    
-    // Set as active
-    this.setActiveProjectId(newProject.id);
-    
-    return newProject;
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem('stockhaus_token');
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || 'Request failed');
+    }
+
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    return response.json() as Promise<T>;
   }
 
-  /**
-   * Delete a project and its data
-   */
+  getActiveProjectId(): string | null {
+    return localStorage.getItem(ACTIVE_PROJECT_ID_KEY);
+  }
+
+  setActiveProjectId(id: string) {
+    localStorage.setItem(ACTIVE_PROJECT_ID_KEY, id);
+  }
+
+  async getProjects(): Promise<Project[]> {
+    return this.request<Project[]>('/projects');
+  }
+
+  async createProject(name: string, description?: string): Promise<Project> {
+    const project = await this.request<Project>('/projects', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+    this.setActiveProjectId(project.id);
+    return project;
+  }
+
   async deleteProject(id: string): Promise<void> {
-    await delay(300);
-    const projects = await this.getProjects();
-    const updatedProjects = projects.filter(p => p.id !== id);
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
-    
-    // Delete actual data
-    localStorage.removeItem(`${DATA_PREFIX}${id}`);
-    
-    // If deleted project was active, clear active state
+    await this.request(`/projects/${id}`, { method: 'DELETE' });
     if (this.getActiveProjectId() === id) {
       localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
     }
   }
 
-  /**
-   * Set the active project ID for the session
-   */
-  setActiveProjectId(id: string) {
-    localStorage.setItem(ACTIVE_PROJECT_ID_KEY, id);
-    this.updateProjectAccessTime(id);
-  }
-
-  /**
-   * Get currently active project ID
-   */
-  getActiveProjectId(): string | null {
-    return localStorage.getItem(ACTIVE_PROJECT_ID_KEY);
-  }
-
-  /**
-   * Get full details of currently active project
-   */
   async getActiveProject(): Promise<Project | null> {
     const id = this.getActiveProjectId();
     if (!id) return null;
-    const projects = await this.getProjects();
-    return projects.find(p => p.id === id) || null;
-  }
-
-  private async updateProjectAccessTime(id: string) {
-    const projects = await this.getProjects();
-    const index = projects.findIndex(p => p.id === id);
-    if (index !== -1) {
-      projects[index].lastAccessed = Date.now();
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    try {
+      return await this.request<Project>(`/projects/${id}`);
+    } catch {
+      return null;
     }
   }
 
-  private async updateProjectItemCount(id: string, count: number) {
-    const projects = await this.getProjects();
-    const index = projects.findIndex(p => p.id === id);
-    if (index !== -1) {
-      projects[index].itemCount = count;
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    }
-  }
-
-  // --- DATA MANAGEMENT (Scoped to Active Project) ---
-
-  private getStorageKey(): string {
-    const projectId = this.getActiveProjectId();
-    if (!projectId) throw new Error("No active project session.");
-    return `${DATA_PREFIX}${projectId}`;
-  }
-
-  /**
-   * Fetch all paintings for the ACTIVE project
-   */
   async getAllPaintings(): Promise<Painting[]> {
-    await delay(300);
-    try {
-      const key = this.getStorageKey();
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error("DB Error:", error);
-      return [];
-    }
-  }
-
-  /**
-   * Add a new painting entry to ACTIVE project
-   */
-  async addPainting(data: Omit<Painting, 'id' | 'createdAt' | 'updatedAt'>): Promise<Painting> {
-    await delay(500);
     const projectId = this.getActiveProjectId();
-    if (!projectId) throw new Error("No active project");
-
-    const paintings = await this.getAllPaintings();
-    
-    const newPainting: Painting = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    paintings.push(newPainting);
-    this._save(paintings);
-    
-    // Update metadata count
-    this.updateProjectItemCount(projectId, paintings.length);
-    
-    return newPainting;
+    if (!projectId) throw new Error('No active project selected.');
+    return this.request<Painting[]>(`/projects/${projectId}/paintings`);
   }
 
-  /**
-   * Update an existing painting
-   */
-  async updatePainting(id: string, data: Partial<Painting>): Promise<Painting | null> {
-    await delay(400);
-    const paintings = await this.getAllPaintings();
-    const index = paintings.findIndex(p => p.id === id);
-    
-    if (index === -1) return null;
-
-    const updated: Painting = {
-      ...paintings[index],
-      ...data,
-      updatedAt: Date.now()
-    };
-
-    paintings[index] = updated;
-    this._save(paintings);
-    return updated;
+  async addPainting(data: {
+    serialNumber: string;
+    name: string;
+    width: number;
+    height: number;
+    unit: 'cm' | 'in';
+    quantity: number;
+    rate?: number;
+    imageBase64: string;
+  }): Promise<Painting> {
+    const projectId = this.getActiveProjectId();
+    if (!projectId) throw new Error('No active project selected.');
+    return this.request<Painting>(`/projects/${projectId}/paintings`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
-  /**
-   * Delete a painting
-   */
+  async updatePainting(id: string, data: Partial<Painting> & { imageBase64?: string }): Promise<Painting> {
+    const projectId = this.getActiveProjectId();
+    if (!projectId) throw new Error('No active project selected.');
+    return this.request<Painting>(`/projects/${projectId}/paintings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async deletePainting(id: string): Promise<boolean> {
-    await delay(300);
     const projectId = this.getActiveProjectId();
-    if (!projectId) throw new Error("No active project");
-
-    const paintings = await this.getAllPaintings();
-    const filtered = paintings.filter(p => p.id !== id);
-    
-    if (paintings.length === filtered.length) return false;
-    
-    this._save(filtered);
-    this.updateProjectItemCount(projectId, filtered.length);
-    
+    if (!projectId) throw new Error('No active project selected.');
+    await this.request(`/projects/${projectId}/paintings/${id}`, { method: 'DELETE' });
     return true;
-  }
-
-  // Internal helper
-  private _save(data: Painting[]) {
-    try {
-      const key = this.getStorageKey();
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.error("Storage Quota Exceeded.", e);
-      alert("Storage full! Try deleting some items or using smaller images.");
-    }
   }
 }
 

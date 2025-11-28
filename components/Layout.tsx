@@ -1,34 +1,118 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Circle, Menu, X, LogOut, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Circle, Menu, X, LogOut, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { db } from '../lib/db';
 import { Project } from '../types';
+import { useAuth } from '../providers/AuthProvider';
 
 export const Layout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [isSwitchingProject, setIsSwitchingProject] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
-    const loadProject = async () => {
-      const p = await db.getActiveProject();
-      setCurrentProject(p);
+    const loadData = async () => {
+      const [active, list] = await Promise.all([db.getActiveProject(), db.getProjects()]);
+      setCurrentProject(active);
+      setProjects(list);
     };
-    loadProject();
-  }, [location.pathname]); // Reload when path changes just to be safe
+    loadData();
+  }, [location.pathname, isSwitchModalOpen]); // keep data fresh when navigating/closing modal
 
-  const handleSwitchProject = () => {
-    // We don't necessarily need to clear the session ID here if we want 
-    // to remember the last one, but for UI clarity:
-    // db.setActiveProjectId(''); 
-    navigate('/');
+  const handleOpenSwitchProject = () => {
+    setIsSwitchModalOpen(true);
   };
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/upload', label: 'Add Item', icon: <PlusCircle size={20} /> },
+    { path: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/app/upload', label: 'Add Item', icon: <PlusCircle size={20} /> },
   ];
+
+  const selectProject = async (id: string) => {
+    try {
+      setIsSwitchingProject(true);
+      db.setActiveProjectId(id);
+      const [active, list] = await Promise.all([db.getActiveProject(), db.getProjects()]);
+      setCurrentProject(active);
+      setProjects(list);
+      setIsSwitchModalOpen(false);
+      const isMobile = window.innerWidth < 768;
+      navigate(isMobile ? '/app/upload' : '/app/dashboard');
+    } finally {
+      setIsSwitchingProject(false);
+    }
+  };
+
+  const ProjectSwitchModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsSwitchModalOpen(false)} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-400">Switch Session</p>
+            <h3 className="text-2xl font-bold text-slate-900 mt-1">Select a project</h3>
+          </div>
+          <button
+            onClick={() => setIsSwitchModalOpen(false)}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+            aria-label="Close project switcher"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {projects.length === 0 ? (
+          <div className="text-center py-12 px-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
+            <p className="text-slate-500 mb-4">No sessions available yet.</p>
+            <button
+              onClick={() => {
+                setIsSwitchModalOpen(false);
+                navigate('/');
+              }}
+              className="px-4 py-2 rounded-lg bg-brand-600 text-white font-semibold hover:bg-brand-700 transition-colors"
+            >
+              Create a project
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {projects.map((project) => {
+              const isActive = currentProject?.id === project.id;
+              return (
+                <button
+                  key={project.id}
+                  onClick={() => selectProject(project.id)}
+                  disabled={isSwitchingProject}
+                  className={`w-full flex items-center justify-between rounded-2xl border px-4 py-4 text-left transition-all ${
+                    isActive
+                      ? 'border-brand-200 bg-brand-50 shadow-sm'
+                      : 'border-slate-200 hover:border-brand-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <p className={`font-semibold ${isActive ? 'text-brand-700' : 'text-slate-900'}`}>{project.name}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {new Date(project.lastAccessed).toLocaleDateString()} • {project.itemCount} items
+                    </p>
+                  </div>
+                  {isActive ? (
+                    <CheckCircle2 className="text-brand-600" size={24} />
+                  ) : (
+                    <ChevronRight className="text-slate-300" size={24} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-white overflow-hidden">
@@ -73,13 +157,25 @@ export const Layout: React.FC = () => {
         </nav>
         
         <div className="p-4 border-t border-slate-100">
-           <button 
-            onClick={handleSwitchProject}
-            className="flex items-center gap-2 w-full px-4 py-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors text-sm font-medium"
-           >
-             <LogOut size={18} />
-             Switch Project
-           </button>
+          <div className="flex flex-col gap-3">
+            <div className="text-xs text-slate-400 uppercase font-semibold">Signed in as</div>
+            <div className="text-sm text-slate-700 break-all">{user?.username}</div>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleOpenSwitchProject}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors text-sm font-medium"
+              >
+                <LogOut size={16} />
+                Switch Project
+              </button>
+              <button
+                onClick={() => { logout(); navigate('/login'); }}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 transition-colors text-sm font-medium"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -111,7 +207,7 @@ export const Layout: React.FC = () => {
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Active Project</p>
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-slate-900">{currentProject?.name}</p>
-                <button onClick={handleSwitchProject} className="text-xs text-brand-600 font-medium">Switch</button>
+                <button onClick={handleOpenSwitchProject} className="text-xs text-brand-600 font-medium">Switch</button>
               </div>
             </div>
 
@@ -134,13 +230,21 @@ export const Layout: React.FC = () => {
                 </NavLink>
               ))}
               
-              <button
-                onClick={handleSwitchProject}
-                className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-lg text-slate-500 hover:text-slate-800"
-              >
-                <LogOut size={20} />
-                Switch Project
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleOpenSwitchProject}
+                  className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-lg text-slate-500 hover:text-slate-800"
+                >
+                  <LogOut size={20} />
+                  Switch Project
+                </button>
+                <button
+                  onClick={() => { logout(); navigate('/login'); }}
+                  className="w-full px-4 py-4 rounded-xl text-lg text-red-500 border border-red-100 hover:bg-red-50"
+                >
+                  Sign Out
+                </button>
+              </div>
             </nav>
           </div>
         )}
@@ -150,6 +254,7 @@ export const Layout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      {isSwitchModalOpen && <ProjectSwitchModal />}
     </div>
   );
 };
