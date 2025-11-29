@@ -21,7 +21,8 @@ if (envPath) {
 }
 
 const app = express();
-const PORT = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 4000;
+// Railway/Render use PORT, but we allow API_PORT for local dev
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '4000', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
