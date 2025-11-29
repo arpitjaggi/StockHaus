@@ -1,27 +1,7 @@
 import { Painting, Project } from '../types';
 
 const ACTIVE_PROJECT_ID_KEY = 'stockhaus_active_project_id';
-
-// Resolve API base URL with this priority:
-// 1. Vite build-time env `VITE_API_BASE_URL`
-// 2. Runtime override set by the host page `window.__STOCKHAUS_API_BASE__`
-// 3. Same-origin `/api` (useful when backend is served from the same domain)
-// 4. Fallback to localhost for local dev
-const API_BASE_URL = (() => {
-  const env = (import.meta.env.VITE_API_BASE_URL as string | undefined);
-  if (env && env !== '') return env.replace(/\/$/, '');
-  if (typeof window !== 'undefined') {
-    const runtime = (window as any).__STOCKHAUS_API_BASE__ as string | undefined;
-    if (runtime && runtime !== '') return runtime.replace(/\/$/, '');
-    // default to same origin + /api
-    try {
-      return `${window.location.origin.replace(/\/$/, '')}/api`;
-    } catch {
-      return 'http://localhost:4000/api';
-    }
-  }
-  return 'http://localhost:4000/api';
-})();
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 
 type ApiOptions = RequestInit & { requireAuth?: boolean };
 

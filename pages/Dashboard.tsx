@@ -33,133 +33,21 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleExport = async () => {
-    try {
-      // Dynamic import to avoid issues
-      const ExcelJS = (await import('exceljs')).default;
-      
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Inventory');
+  const handleExport = () => {
+    const exportData = paintings.map(p => ({
+      'Serial Number': p.serialNumber,
+      'Item Name': p.name,
+      'Dimensions': `${p.width} x ${p.height} ${p.unit}`,
+      'Quantity': p.quantity,
+      'Rate (INR)': p.rate || 0,
+      'Total Value (INR)': p.quantity * (p.rate || 0),
+      'Date Added': new Date(p.createdAt).toLocaleDateString()
+    }));
 
-      // Define columns - Image first
-      worksheet.columns = [
-        { header: 'Item Image', key: 'image', width: 25 },
-        { header: 'Serial Number', key: 'serialNumber', width: 15 },
-        { header: 'Item Name', key: 'itemName', width: 25 },
-        { header: 'Width', key: 'width', width: 12 },
-        { header: 'Height', key: 'height', width: 12 },
-        { header: 'Unit', key: 'unit', width: 10 },
-        { header: 'Quantity', key: 'quantity', width: 12 },
-        { header: 'Rate (INR)', key: 'rate', width: 15 },
-      ];
-
-      // Style header row
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE8F0F8' }
-      };
-
-      // Add rows with data
-      for (let i = 0; i < paintings.length; i++) {
-        const painting = paintings[i];
-        const row = worksheet.addRow({
-          image: '',
-          serialNumber: painting.serialNumber,
-          itemName: painting.name,
-          width: painting.width,
-          height: painting.height,
-          unit: painting.unit,
-          quantity: painting.quantity,
-          rate: painting.rate || 0,
-        });
-
-        // Set row height to accommodate image
-        row.height = 100;
-
-        // Try to add image
-        if (painting.imageUrl) {
-          try {
-            const response = await fetch(painting.imageUrl);
-            const blob = await response.blob();
-            
-            // Convert blob to base64
-            const reader = new FileReader();
-            const base64Data = await new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-
-            // Extract base64 content
-            const base64String = base64Data.split(',')[1];
-            
-            const imageId = workbook.addImage({
-              base64: base64String,
-              extension: 'jpeg'
-            });
-
-            // Add image to the first column (column 0), in the current row
-            // The image will fit within the cell while maintaining aspect ratio
-            worksheet.addImage(imageId, {
-              tl: { col: 0, row: i + 1 },
-              ext: { width: 100, height: 100 }
-            });
-          } catch (imgErr) {
-            console.warn(`Could not embed image for ${painting.serialNumber}:`, imgErr);
-          }
-        }
-      }
-
-      // Write file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'StockHaus_Inventory.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export error:', error);
-      // Fallback to simple export without images
-      try {
-        const exportData = paintings.map(p => ({
-          'Item Image': p.imageUrl || '',
-          'Serial Number': p.serialNumber,
-          'Item Name': p.name,
-          'Width': p.width,
-          'Height': p.height,
-          'Unit': p.unit,
-          'Quantity': p.quantity,
-          'Rate (INR)': p.rate || 0,
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        ws['!cols'] = [
-          { wch: 25 },
-          { wch: 15 },
-          { wch: 25 },
-          { wch: 12 },
-          { wch: 12 },
-          { wch: 10 },
-          { wch: 12 },
-          { wch: 15 }
-        ];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-        XLSX.writeFile(wb, "StockHaus_Inventory.xlsx");
-      } catch (fallbackError) {
-        console.error('Fallback export also failed:', fallbackError);
-        alert('Failed to export. Please try again.');
-      }
-    }
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, "StockHaus_Inventory.xlsx");
   };
 
   const filteredAndSortedData = useMemo(() => {
@@ -281,6 +169,7 @@ export const Dashboard: React.FC = () => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Dimensions</th>
                 <SortHeader field="quantity" label="Qty" />
                 <SortHeader field="rate" label="Rate" />
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
                 <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -314,6 +203,9 @@ export const Dashboard: React.FC = () => {
                         ? `₹${painting.rate.toFixed(2)}` 
                         : <span className="text-slate-300">-</span>}
                     </td>
+                    <td className="px-6 py-4 font-bold text-slate-900 font-sans">
+                      {painting.rate ? `₹${(painting.quantity * painting.rate).toFixed(2)}` : <span className="text-slate-300">-</span>}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => handleDelete(painting.id)}
@@ -327,7 +219,7 @@ export const Dashboard: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-400">
                       <Filter size={48} className="mb-4 text-slate-200" />
                       <p className="text-lg font-medium text-slate-500">No items found</p>

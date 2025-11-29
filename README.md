@@ -125,28 +125,11 @@ Log in with one of the usernames from `AUTH_USERS`, create a project, upload a p
 - Supabase credentials never ship to the browser.
 - Removing a user from `AUTH_USERS` invalidates their future logins; existing tokens can be rotated by changing `JWT_SECRET`.
 
-## 📚 Testing & Documentation
-
-Complete testing analysis and documentation is available in the `/docs` folder:
-
-- **START-HERE.md** - Quick navigation by role (managers, developers, QA)
-- **TESTING-FINAL-SUMMARY.md** - Executive summary of all testing
-- **TESTING-COMPLETE.md** - Detailed findings and recommendations
-- **TESTING-REPORT.md** - Technical report with metrics and browser compatibility
-- **TESTING-GUIDE.md** - Step-by-step testing instructions
-- **test-scenarios.md** - 120+ comprehensive test cases
-- **CODE-ANALYSIS.md** - Code review and quality assessment
-- **ISSUE-SERIAL-UNIQUENESS.md** - Implementation guide for serial number validation
-- **TESTING-INDEX.md** - Document index and navigation guide
-
-**Status**: Code Quality: 8.8/10 | Feature Completeness: 95% | Deployment Ready: 8.5/10
-
 ## 🧰 Future Enhancements
 
 - Persist `AUTH_USERS` in Supabase instead of env vars.
 - Add server-side auditing/logging.
 - Wire Supabase Realtime for live inventory updates.
 - Add role-based permissions or shared projects between internal accounts.
-- Serial number uniqueness validation (see `/docs/ISSUE-SERIAL-UNIQUENESS.md`)
 
 Happy cataloging! 🎨

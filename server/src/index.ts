@@ -8,20 +8,16 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-// Resolve .env relative to the server directory (works for both dev and production)
+// Look for .env in the server directory (where this file lives)
 const serverDir = path.resolve(__dirname, '..');
-const envCandidates = ['.env.server', '.env'];
-const envPath = envCandidates
-  .map((file) => path.resolve(serverDir, file))
-  .find((filePath) => fs.existsSync(filePath));
+const envCandidates = [path.join(serverDir, '.env'), path.join(process.cwd(), '.env.server'), path.join(process.cwd(), '.env')];
+const envPath = envCandidates.find((filePath) => fs.existsSync(filePath));
 
-dotenv.config({ path: envPath });
-
-// Debug: Log env file location
 if (envPath) {
-  console.log(`✓ Loaded .env from: ${envPath}`);
+  dotenv.config({ path: envPath });
+  console.log(`Loaded environment from: ${envPath}`);
 } else {
-  console.warn('⚠ No .env file found');
+  console.warn('No .env file found. Using system environment variables.');
 }
 
 const app = express();
@@ -63,7 +59,10 @@ const INTERNAL_USERS = parseAuthUsers(process.env.AUTH_USERS);
 if (!INTERNAL_USERS.length) {
   throw new Error('No internal users configured. Set AUTH_USERS in env.');
 }
-console.log(`✓ Loaded ${INTERNAL_USERS.length} user(s): ${INTERNAL_USERS.map((u) => u.username).join(', ')}`);
+
+console.log(`Loaded ${INTERNAL_USERS.length} internal user(s): ${INTERNAL_USERS.map(u => u.username).join(', ')}`);
+console.log(`Supabase URL: ${SUPABASE_URL ? '✓ Set' : '✗ Missing'}`);
+console.log(`Service Role Key: ${SUPABASE_SERVICE_ROLE_KEY ? '✓ Set (' + SUPABASE_SERVICE_ROLE_KEY.substring(0, 20) + '...)' : '✗ Missing'}`);
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -221,7 +220,6 @@ app.post('/api/auth/login', async (req, res) => {
 
   const user = INTERNAL_USERS.find((u) => u.username === username);
   if (!user || !timingSafeEqual(user.password, password)) {
-    console.warn(`Login failed: username="${username}", valid users: ${INTERNAL_USERS.map((u) => u.username).join(', ')}`);
     return res.status(401).json({ message: 'Invalid credentials.' });
   }
 
@@ -230,7 +228,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign({ sub: username, supabaseUserId }, JWT_SECRET, { expiresIn: '12h' });
     return res.json({ token, username });
   } catch (error) {
-    console.error('Session creation error:', error);
+    console.error(error);
     return res.status(500).json({ message: 'Unable to create session.' });
   }
 });

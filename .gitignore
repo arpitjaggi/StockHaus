@@ -26,3 +26,10 @@ dist-ssr
 # Ignore local server env
 server/.env
 *.env.local
+.vercel
+.env*.local
+
+# Process IDs
+*.pid
+client.pid
+server/server.pid
