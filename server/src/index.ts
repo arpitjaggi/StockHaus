@@ -30,6 +30,11 @@ const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'paintings';
 const JWT_SECRET = process.env.JWT_SECRET || 'stockhaus-secret';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ CRITICAL: Supabase environment variables are missing.');
+  console.error('   Required variables:');
+  console.error('   - SUPABASE_URL');
+  console.error('   - SUPABASE_SERVICE_ROLE_KEY');
+  console.error('   Set these in Railway → Service → Variables');
   throw new Error('Supabase environment variables are missing.');
 }
 
@@ -58,12 +63,18 @@ const parseAuthUsers = (raw: string | undefined): InternalUser[] => {
 
 const INTERNAL_USERS = parseAuthUsers(process.env.AUTH_USERS);
 if (!INTERNAL_USERS.length) {
+  console.error('❌ CRITICAL: No internal users configured.');
+  console.error('   Set AUTH_USERS environment variable in Railway.');
+  console.error('   Format: username1:password1,username2:password2');
   throw new Error('No internal users configured. Set AUTH_USERS in env.');
 }
 
-console.log(`Loaded ${INTERNAL_USERS.length} internal user(s): ${INTERNAL_USERS.map(u => u.username).join(', ')}`);
-console.log(`Supabase URL: ${SUPABASE_URL ? '✓ Set' : '✗ Missing'}`);
-console.log(`Service Role Key: ${SUPABASE_SERVICE_ROLE_KEY ? '✓ Set (' + SUPABASE_SERVICE_ROLE_KEY.substring(0, 20) + '...)' : '✗ Missing'}`);
+console.log(`✅ Loaded ${INTERNAL_USERS.length} internal user(s): ${INTERNAL_USERS.map(u => u.username).join(', ')}`);
+console.log(`✅ Supabase URL: ${SUPABASE_URL ? 'Set' : '✗ MISSING'}`);
+console.log(`✅ Service Role Key: ${SUPABASE_SERVICE_ROLE_KEY ? 'Set (' + SUPABASE_SERVICE_ROLE_KEY.substring(0, 20) + '...)' : '✗ MISSING'}`);
+console.log(`✅ JWT Secret: ${JWT_SECRET ? 'Set' : '✗ MISSING'}`);
+console.log(`✅ Port: ${PORT}`);
+console.log(`✅ CORS Origin: ${CORS_ORIGIN}`);
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -415,22 +426,26 @@ app.delete('/api/projects/:projectId/paintings/:paintingId', authenticate, async
 
 // Error handling for uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
   process.exit(1);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ StockHaus API running on http://0.0.0.0:${PORT}`);
-  console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✅ CORS Origin: ${CORS_ORIGIN}`);
-  console.log(`✅ Supabase URL: ${SUPABASE_URL ? 'Set' : 'Missing'}`);
-  console.log(`✅ Service Role Key: ${SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing'}`);
-  console.log(`✅ JWT Secret: ${JWT_SECRET ? 'Set' : 'Missing'}`);
-  console.log(`✅ Internal Users: ${INTERNAL_USERS.length} configured`);
-});
+try {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 StockHaus API running on http://0.0.0.0:${PORT}`);
+    console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✅ All systems ready!\n`);
+  });
+} catch (error: any) {
+  console.error('❌ Failed to start server:', error.message);
+  console.error('Stack:', error.stack);
+  process.exit(1);
+}
 
