@@ -413,7 +413,24 @@ app.delete('/api/projects/:projectId/paintings/:paintingId', authenticate, async
   return res.status(204).send();
 });
 
-app.listen(PORT, () => {
-  console.log(`StockHaus API running on http://localhost:${PORT}`);
+// Error handling for uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ StockHaus API running on http://0.0.0.0:${PORT}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ CORS Origin: ${CORS_ORIGIN}`);
+  console.log(`✅ Supabase URL: ${SUPABASE_URL ? 'Set' : 'Missing'}`);
+  console.log(`✅ Service Role Key: ${SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing'}`);
+  console.log(`✅ JWT Secret: ${JWT_SECRET ? 'Set' : 'Missing'}`);
+  console.log(`✅ Internal Users: ${INTERNAL_USERS.length} configured`);
 });
 
