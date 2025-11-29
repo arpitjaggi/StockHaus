@@ -1,0 +1,20 @@
+# Railway Environment Variables
+# Copy these into Railway → Your Service → Variables tab
+# Replace the placeholder values with your actual values
+
+# Supabase Configuration
+SUPABASE_URL=https://ybxvmphlwbdjeyndqosk.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+SUPABASE_STORAGE_BUCKET=paintings
+
+# Authentication
+AUTH_USERS=admin:admin,arpit:arpit,user:user@123
+JWT_SECRET=17964dca82df4248b7275f4c782d7758eebc66d27e231c058dd15182828dfa23
+
+# CORS Configuration
+# Replace with your actual Vercel URL
+CORS_ORIGIN=https://your-app.vercel.app,http://localhost:3000
+
+# Port (optional - Railway sets PORT automatically)
+API_PORT=4000
+
