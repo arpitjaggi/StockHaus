@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: stockhaus-api
+    env: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: API_PORT
+        value: 4000
+      - key: CORS_ORIGIN
+        sync: false  # Set this in Render dashboard
+      - key: SUPABASE_URL
+        sync: false  # Set this in Render dashboard
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false  # Set this in Render dashboard
+      - key: SUPABASE_STORAGE_BUCKET
+        value: paintings
+      - key: AUTH_USERS
+        sync: false  # Set this in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # Set this in Render dashboard
+

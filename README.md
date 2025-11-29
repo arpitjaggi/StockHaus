@@ -107,17 +107,14 @@ Log in with one of the usernames from `AUTH_USERS`, create a project, upload a p
 
 ## 📦 Production Deployment
 
-1. **Backend**  
-   - `npm run build:server`  
-   - Deploy `server/dist` on Railway/Render/Fly/VM with Node 18+.  
-   - Provide all server env vars (`SUPABASE_*`, `AUTH_USERS`, `JWT_SECRET`, etc.).
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for a complete step-by-step guide.
 
-2. **Frontend**  
-   - Set `VITE_API_BASE_URL` to the deployed API URL in Vercel/Netlify.  
-   - `npm run build` → deploy the `dist/` folder.
+**Quick summary:**
+1. **Backend**: Deploy to Railway or Render (configs included)
+2. **Frontend**: Deploy to Vercel with `VITE_API_BASE_URL` pointing to your backend
+3. **Test**: Log in, create projects, upload paintings
 
-3. **Post-deploy checks**  
-   - Log in, add data, confirm Supabase receives entries and storage uploads.
+All deployment configurations (`railway.json`, `render.yaml`, `vercel.json`) are included in the repo.
 
 ## 🔐 Notes
 
