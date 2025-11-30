@@ -2,6 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 
+// Debug logging (only in development)
+if (import.meta.env.DEV) {
+  console.log('🔧 API Base URL:', API_BASE_URL);
+}
+
 type AuthContextValue = {
   user: { username: string } | null;
   isLoading: boolean;
@@ -54,12 +59,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || 'Login failed');
+        let errorMessage = 'Login failed';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, try text
+          const text = await res.text();
+          errorMessage = text || errorMessage;
+        }
+        
+        // Provide helpful error messages
+        if (res.status === 0 || res.status === 500) {
+          errorMessage = 'Cannot connect to server. Check if backend is running and VITE_API_BASE_URL is set correctly.';
+        } else if (res.status === 401) {
+          errorMessage = 'Invalid username or password.';
+        } else if (res.status === 404) {
+          errorMessage = 'API endpoint not found. Check VITE_API_BASE_URL configuration.';
+        }
+        
+        throw new Error(errorMessage);
       }
       const data = await res.json();
       localStorage.setItem(tokenKey, data.token);
       setUser({ username: data.username });
+    } catch (err) {
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        throw new Error('Network error: Cannot reach backend server. Check VITE_API_BASE_URL in Vercel environment variables.');
+      }
+      throw err;
     } finally {
       setIsLoading(false);
     }
