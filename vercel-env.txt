@@ -1,0 +1,9 @@
+# Vercel Environment Variables
+# Copy these into Vercel → Your Project → Settings → Environment Variables
+# Replace the placeholder values with your actual values
+
+# Backend API URL (REQUIRED)
+# Get this from Railway → Your Service → Settings → Networking → Public URL
+# Must include /api at the end
+VITE_API_BASE_URL=https://your-railway-url.up.railway.app/api
+
