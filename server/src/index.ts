@@ -477,11 +477,25 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+console.log(`\n🔧 Starting server...`);
+console.log(`🔧 PORT env var: ${process.env.PORT || 'not set'}`);
+console.log(`🔧 API_PORT env var: ${process.env.API_PORT || 'not set'}`);
+console.log(`🔧 Using port: ${PORT}`);
+
 try {
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 StockHaus API running on http://0.0.0.0:${PORT}`);
     console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`✅ All systems ready!\n`);
+  });
+  
+  server.on('error', (error: any) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use`);
+    } else {
+      console.error('❌ Server error:', error);
+    }
+    process.exit(1);
   });
 } catch (error: any) {
   console.error('❌ Failed to start server:', error.message);
