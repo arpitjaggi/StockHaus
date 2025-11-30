@@ -1,10 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+// Ensure API_BASE_URL always ends with /api
+let rawUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+rawUrl = rawUrl.replace(/\/$/, ''); // Remove trailing slash
+if (!rawUrl.endsWith('/api')) {
+  // If it doesn't end with /api, add it
+  rawUrl = rawUrl + '/api';
+}
+const API_BASE_URL = rawUrl;
 
 // Debug logging - always log in case of issues
 console.log('🔧 API Base URL:', API_BASE_URL);
 console.log('🔧 VITE_API_BASE_URL env:', import.meta.env.VITE_API_BASE_URL);
+console.log('🔧 Final API Base URL:', API_BASE_URL);
 
 type AuthContextValue = {
   user: { username: string } | null;

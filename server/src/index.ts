@@ -104,18 +104,31 @@ const paintingUpdateSchema = paintingSchema.partial();
 const corsOrigins = CORS_ORIGIN.split(',').map((origin) => origin.trim());
 console.log('✅ CORS Origins:', corsOrigins);
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ CORS: Allowing request with no origin');
+        return callback(null, true);
+      }
+      
+      console.log(`🔍 CORS: Checking origin: ${origin}`);
+      console.log(`🔍 CORS: Allowed origins: ${corsOrigins.join(', ')}`);
       
       if (corsOrigins.includes(origin)) {
+        console.log(`✅ CORS: Allowing origin: ${origin}`);
         callback(null, true);
       } else {
-        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        console.warn(`❌ CORS blocked origin: ${origin}`);
         console.warn(`   Allowed origins: ${corsOrigins.join(', ')}`);
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error(`CORS: Origin ${origin} is not allowed. Add it to CORS_ORIGIN in Railway.`));
       }
     },
     credentials: true,
@@ -239,6 +252,16 @@ const refreshProjectMetadata = async (projectId: string) => {
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: Date.now() });
+});
+
+// CORS test endpoint
+app.get('/api/cors-test', (_req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'CORS is working',
+    origin: _req.headers.origin,
+    allowedOrigins: corsOrigins
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
