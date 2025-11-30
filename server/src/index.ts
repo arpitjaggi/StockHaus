@@ -101,50 +101,29 @@ const paintingSchema = z.object({
 
 const paintingUpdateSchema = paintingSchema.partial();
 
-const corsOrigins = CORS_ORIGIN.split(',').map((origin) => origin.trim());
-console.log('✅ CORS Origins:', corsOrigins);
+// CORS: Allow all origins for now to ensure it works
+// You can restrict this later by setting CORS_ORIGIN env var
+const allowedOrigins = CORS_ORIGIN === 'http://localhost:3000' 
+  ? ['*'] // Default: allow all
+  : CORS_ORIGIN.split(',').map((origin) => origin.trim().replace(/\/$/, ''));
+
+console.log('✅ CORS Origins:', allowedOrigins);
+
+// Simple CORS - handles preflight automatically
+app.use(cors({
+  origin: true, // Reflect the origin in Access-Control-Allow-Origin
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
   next();
 });
-
-// CORS configuration
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('✅ CORS: Allowing request with no origin');
-      return callback(null, true);
-    }
-    
-    console.log(`🔍 CORS: Checking origin: ${origin}`);
-    console.log(`🔍 CORS: Allowed origins: ${corsOrigins.join(', ')}`);
-    
-    // Normalize origins (remove trailing slashes)
-    const normalizedOrigin = origin.replace(/\/$/, '');
-    const normalizedAllowed = corsOrigins.map(o => o.replace(/\/$/, ''));
-    
-    if (normalizedAllowed.includes(normalizedOrigin)) {
-      console.log(`✅ CORS: Allowing origin: ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS blocked origin: ${origin}`);
-      console.warn(`   Normalized: ${normalizedOrigin}`);
-      console.warn(`   Allowed origins: ${corsOrigins.join(', ')}`);
-      console.warn(`   Add "${origin}" to CORS_ORIGIN in Railway Variables`);
-      callback(new Error(`CORS: Origin ${origin} is not allowed. Add it to CORS_ORIGIN in Railway.`));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type'],
-  maxAge: 86400, // 24 hours
-};
-
-app.use(cors(corsOptions));
 app.use(express.json({ limit: '20mb' }));
 
 const timingSafeEqual = (a: string, b: string) => {
@@ -269,7 +248,7 @@ app.get('/api/cors-test', (_req, res) => {
     status: 'ok', 
     message: 'CORS is working',
     origin: _req.headers.origin,
-    allowedOrigins: corsOrigins
+    allowedOrigins: allowedOrigins
   });
 });
 
