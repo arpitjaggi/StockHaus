@@ -2,10 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 
-// Debug logging (only in development)
-if (import.meta.env.DEV) {
-  console.log('🔧 API Base URL:', API_BASE_URL);
-}
+// Debug logging - always log in case of issues
+console.log('🔧 API Base URL:', API_BASE_URL);
+console.log('🔧 VITE_API_BASE_URL env:', import.meta.env.VITE_API_BASE_URL);
 
 type AuthContextValue = {
   user: { username: string } | null;
@@ -52,12 +51,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     setIsLoading(true);
+    const loginUrl = `${API_BASE_URL}/auth/login`;
+    console.log('🔧 Attempting login to:', loginUrl);
+    
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
+      
+      console.log('🔧 Login response status:', res.status, res.statusText);
+      
       if (!res.ok) {
         let errorMessage = 'Login failed';
         try {
@@ -75,7 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (res.status === 401) {
           errorMessage = 'Invalid username or password.';
         } else if (res.status === 404) {
-          errorMessage = 'API endpoint not found. Check VITE_API_BASE_URL configuration.';
+          errorMessage = `API endpoint not found at ${loginUrl}. Check VITE_API_BASE_URL configuration.`;
+        } else if (res.status === 0) {
+          errorMessage = 'CORS error or network failure. Check CORS_ORIGIN in Railway includes your Vercel URL.';
         }
         
         throw new Error(errorMessage);
@@ -84,8 +91,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(tokenKey, data.token);
       setUser({ username: data.username });
     } catch (err) {
+      console.error('🔧 Login error:', err);
       if (err instanceof TypeError && err.message.includes('fetch')) {
-        throw new Error('Network error: Cannot reach backend server. Check VITE_API_BASE_URL in Vercel environment variables.');
+        const errorMsg = `Network error: Cannot reach backend server at ${loginUrl}. ` +
+          `Check: 1) VITE_API_BASE_URL in Vercel env vars, 2) Railway backend is running, 3) CORS_ORIGIN includes your Vercel URL.`;
+        throw new Error(errorMsg);
       }
       throw err;
     } finally {

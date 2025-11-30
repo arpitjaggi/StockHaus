@@ -101,9 +101,26 @@ const paintingSchema = z.object({
 
 const paintingUpdateSchema = paintingSchema.partial();
 
+const corsOrigins = CORS_ORIGIN.split(',').map((origin) => origin.trim());
+console.log('✅ CORS Origins:', corsOrigins);
+
 app.use(
   cors({
-    origin: CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        console.warn(`   Allowed origins: ${corsOrigins.join(', ')}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 );
 app.use(express.json({ limit: '20mb' }));
