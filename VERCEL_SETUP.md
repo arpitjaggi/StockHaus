@@ -9,9 +9,9 @@
 5. Click **"Save"**
 6. **Redeploy** your app for changes to take effect
 
-## Required Variable
+## Required Variables
 
-### API Base URL
+### API Base URL (REQUIRED)
 ```
 Key: VITE_API_BASE_URL
 Value: https://your-railway-url.up.railway.app/api
@@ -23,6 +23,28 @@ Value: https://your-railway-url.up.railway.app/api
 - **Must include `/api` at the end**
 - **Must use `https://` not `http://`**
 - No trailing slash after `/api`
+
+## Optional Variables
+
+### Supabase Configuration (OPTIONAL - Not Currently Used)
+
+**Note**: The frontend currently only uses the backend API. Supabase variables are **NOT required** unless you want to add client-side Supabase features (e.g., Realtime subscriptions).
+
+If you want to add them for future use:
+
+```
+Key: VITE_SUPABASE_URL
+Value: https://ybxvmphlwbdjeyndqosk.supabase.co
+
+Key: VITE_SUPABASE_ANON_KEY
+Value: your-supabase-anon-key-here
+```
+
+**Where to get these:**
+- Go to **Supabase Dashboard → Settings → API**
+- Copy the **Project URL** for `VITE_SUPABASE_URL`
+- Copy the **anon/public** key for `VITE_SUPABASE_ANON_KEY`
+- **Do NOT use the service_role key** (that's only for the backend)
 
 ## Step-by-Step Instructions
 
